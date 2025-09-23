@@ -3,18 +3,15 @@ import { AuthRoutes } from "./AuthRoutes";
 import { ManagerRoutes } from "./ManagerRouter";
 import { EmployeeRoutes } from "./EmployeeRoutes";
 import { Loading } from "../components/Loading";
+import { useAuth } from "../hooks/useAuth";
+import { AuthProvider } from "../contexts/AuthContext";
 
-const isLoading = false;
 
-const session = {
-    user: {
-        role: "manager",
-    },
-};
 
 export function Routes() {
-    function renderRoutes() {
-        switch (session.user.role) {
+    const { session, isLoading } = useAuth()
+    function Route() {
+        switch (session?.user.role) {
             case "employee":
                 return <EmployeeRoutes />;
             case "manager":
@@ -24,13 +21,15 @@ export function Routes() {
         }
     }
 
-    if (isLoading) {
-        return <Loading />;
+    if(isLoading){
+        return <Loading/>
     }
 
     return (
-        <BrowserRouter>
-            {renderRoutes()}
-        </BrowserRouter>
+        <AuthProvider>
+            <BrowserRouter>
+                <Route />
+            </BrowserRouter>
+        </AuthProvider>
     );
 }

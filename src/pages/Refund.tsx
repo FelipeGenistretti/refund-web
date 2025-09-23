@@ -6,6 +6,15 @@ import { Upload } from "../components/Upload";
 import { Button } from "../components/Button";
 import { CATEGORIES, CATEGORIES_KEYS } from "../utils/categories";
 import fileSvg from "../assets/file.svg"
+import { file, z, ZodError } from "zod"
+import { api } from "../services/api";
+import { AxiosError } from "axios";
+
+const refundSchema = z.object({
+    nome: z.string().min(3, {message:"Informe um nome claro para sua solicitação"}),
+    category: z.string().min(1, {message:"Informe a categoria"}),
+    valor: z.coerce.number({message:"Informe um valor valido"}).positive({message:"Informe um valor valido e superior a zero"})
+})
 
 export function Refund() {
     const [nome, setNome] = useState("");
@@ -17,7 +26,7 @@ export function Refund() {
     const navigate = useNavigate();
     const params = useParams<{ id: string }>();
 
-    function onSubmit(e: React.FormEvent) {
+    async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
 
         if (params.id) {
@@ -25,9 +34,43 @@ export function Refund() {
             return;
         }
 
-        console.log(nome, valor, category, filename);
+        try{
+            setIsLoading(true)
 
-        navigate("/confirm", { state: { fromSubmit: true } });
+            if(!filename){
+                return alert("selecione um arquivo de comprovante")
+            }
+
+            const fileUploadForm = new FormData()
+            fileUploadForm.append("file", filename)
+
+            const response = await api.post("/uploads", fileUploadForm)
+
+
+            const data = refundSchema.parse({
+                nome, 
+                category,
+                valor: valor.replace(",", ".")
+            })
+
+            await api.post("/refunds", {...data, filename: response.data.filename})
+
+            navigate("/confirm", { state: { fromSubmit: true } });
+        }catch(error){
+            if(error instanceof ZodError){
+                return alert(error.issues[0].message)
+            } 
+
+            if(error instanceof AxiosError){
+                return alert(error.response?.data.message)
+            }
+            alert("nao foi possivel realizar a solicitação")
+
+        } finally {
+            setIsLoading(false)
+        }
+
+
     }
 
     return (
